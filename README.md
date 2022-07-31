@@ -22,3 +22,9 @@ To play the game
 ```sh
 fruit-machine-nodejs $ npm start
 ```
+
+To Run all the tests
+
+```sh
+fruit-machine-nodejs $ npm test
+```

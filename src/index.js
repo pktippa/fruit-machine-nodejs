@@ -1,4 +1,6 @@
 import inquirer from "inquirer";
+import { add, subtract, getFreePlaysForAmount } from "./util.js";
+import { play, evaluatePlay } from "./play.js";
 
 async function main() {
   console.log("Welcome to Fruit Machine game.");
@@ -20,28 +22,19 @@ async function main() {
   if (startGame) start(user["amount"], machine_balance);
 }
 
-async function start(amount, machine_balance, free_plays = 0) {
+async function start(
+  input_amount,
+  input_machine_balance,
+  input_free_plays = 0
+) {
   const result = play();
-
-  // after user play a game reduce 20p or free play for each play
-  if (amount < 0.2 && free_plays) {
-    free_plays -= 1;
-  } else {
-    amount = subtract(amount, 0.2);
-  }
   console.log("\n\n Slots : ", result.join(" | "));
-  const { won } = evaluatePlay(result);
-  // amount added to user won play
-  if (won) {
-    if (won > machine_balance) {
-      amount = add(amount, machine_balance);
-      free_plays += getFreePlaysForAmount(subtract(won, machine_balance));
-      machine_balance = 0;
-    } else {
-      machine_balance = subtract(machine_balance, won);
-      amount = add(amount, won);
-    }
-  }
+  const { amount, free_plays, machine_balance } = runAndUpdate(
+    result,
+    input_amount,
+    input_machine_balance,
+    input_free_plays
+  );
   if (amount >= 0.2 || free_plays > 0) {
     console.log(
       "\n\nBalance: ",
@@ -63,16 +56,32 @@ async function start(amount, machine_balance, free_plays = 0) {
   }
 }
 
-function add(first, second) {
-  return Number((first + second).toFixed(2));
-}
-function subtract(first, second) {
-  return Number((first - second).toFixed(2));
+export function runAndUpdate(result, amount, machine_balance, free_plays) {
+  // after user play a game reduce 20p or free play for each play
+  if (amount < 0.2 && free_plays) {
+    free_plays -= 1;
+  } else {
+    amount = subtract(amount, 0.2);
+  }
+  const { won } = evaluatePlay(result);
+  // amount added to user won play
+  if (won) {
+    if (won > machine_balance) {
+      amount = add(amount, machine_balance);
+      free_plays += getFreePlaysForAmount(subtract(won, machine_balance));
+      machine_balance = 0;
+    } else {
+      machine_balance = subtract(machine_balance, won);
+      amount = add(amount, won);
+    }
+  }
+  return {
+    amount,
+    machine_balance,
+    free_plays,
+  };
 }
 
-function getFreePlaysForAmount(amount) {
-  return amount / 0.2;
-}
 async function promptToContinue(first = false) {
   let choice = await inquirer.prompt({
     type: "list",
@@ -92,65 +101,4 @@ async function promptToContinue(first = false) {
   return choice["continue"];
 }
 
-function play() {
-  let slots = [];
-  let possible = "ABCDEABCDEABCDEABCDE";
-
-  for (let i = 0; i < 4; i++)
-    slots.push(possible.charAt(Math.floor(Math.random() * possible.length)));
-
-  return slots;
-}
-
-function evaluatePlay(result) {
-  if (isJackpot(result)) {
-    console.log("\nWON JACKPOT. CONGRATULATIONS!!. WON £20.");
-    return { won: 20 };
-  } else if (isEachCharacterDifference(result)) {
-    console.log("\nCONGRATULATIONS!!. WON £10.");
-    return { won: 10 };
-  } else if (anyAdjacentCharsSame(result)) {
-    console.log("\nCONGRATULATIONS!!. WON £1.");
-    return { won: 1 };
-  } else {
-    console.log("\nSorry, did not won anything. Up for another game.?");
-    return { won: 0 };
-  }
-}
-
-// Jackpot: if all characters are same
-function isJackpot(result) {
-  let prevChar = result[0];
-  for (let i = 1; i < result.length; i++) {
-    const currentChar = result[i];
-    if (currentChar !== prevChar) return false;
-    prevChar = currentChar;
-  }
-  return true;
-}
-
-// If each slot has a different character then the machine should pay out £10.
-function isEachCharacterDifference(result) {
-  const charTraversal = {};
-  for (let i = 0; i < result.length; i++) {
-    //  if it is already traversed
-    if (charTraversal[result[i]]) return false;
-    // else set to already traversed
-    else charTraversal[result[i]] = true;
-  }
-  return true;
-}
-
-function anyAdjacentCharsSame(result) {
-  let prevChar = result[0];
-  for (let i = 1; i < result.length; i++) {
-    const currentChar = result[i];
-    if (currentChar === prevChar) return true;
-    prevChar = currentChar;
-  }
-  return false;
-}
-
 main();
-
-export { play };
