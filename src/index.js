@@ -16,24 +16,46 @@ async function main() {
     return;
   }
   const startGame = await promptToContinue(true);
-  if (startGame) start(user["amount"]);
+  const machine_balance = 20;
+  if (startGame) start(user["amount"], machine_balance);
 }
 
-async function start(amount) {
+async function start(amount, machine_balance, free_plays = 0) {
   const result = play();
-  // after user play a game reduce 20p for each play
-  amount = Number((amount - 0.2).toFixed(2));
+
+  // after user play a game reduce 20p or free play for each play
+  if (amount < 0.2 && free_plays) {
+    free_plays -= 1;
+  } else {
+    amount = subtract(amount, 0.2);
+  }
   console.log("\n\n Slots : ", result.join(" | "));
   const { won } = evaluatePlay(result);
   // amount added to user won play
-  if (won) amount = Number((amount + won).toFixed(2));
-  if (amount >= 0.2) {
-    console.log("\n\nBalance: ", amount);
+  if (won) {
+    if (won > machine_balance) {
+      amount = add(amount, machine_balance);
+      free_plays += getFreePlaysForAmount(subtract(won, machine_balance));
+      machine_balance = 0;
+    } else {
+      machine_balance = subtract(machine_balance, won);
+      amount = add(amount, won);
+    }
+  }
+  if (amount >= 0.2 || free_plays > 0) {
+    console.log(
+      "\n\nBalance: ",
+      amount,
+      ` Free plays: `,
+      free_plays,
+      " Machine balance: ",
+      machine_balance
+    );
     const continuePlay = await promptToContinue();
     if (continuePlay) {
-      start(amount);
+      start(amount, machine_balance, free_plays);
     } else {
-      console.log(`\nTotal Balance: £${amount}`);
+      console.log(`\nTotal Balance: £${amount}. Free plays: ${free_plays}`);
       console.log("\n\nThanks for choosing Fruit Machine.");
     }
   } else {
@@ -41,6 +63,16 @@ async function start(amount) {
   }
 }
 
+function add(first, second) {
+  return Number((first + second).toFixed(2));
+}
+function subtract(first, second) {
+  return Number((first - second).toFixed(2));
+}
+
+function getFreePlaysForAmount(amount) {
+  return amount / 0.2;
+}
 async function promptToContinue(first = false) {
   let choice = await inquirer.prompt({
     type: "list",
@@ -62,9 +94,9 @@ async function promptToContinue(first = false) {
 
 function play() {
   let slots = [];
-  let possible = "ABCDEABCDE";
+  let possible = "ABCDEABCDEABCDEABCDE";
 
-  for (var i = 0; i < 4; i++)
+  for (let i = 0; i < 4; i++)
     slots.push(possible.charAt(Math.floor(Math.random() * possible.length)));
 
   return slots;
@@ -120,3 +152,5 @@ function anyAdjacentCharsSame(result) {
 }
 
 main();
+
+export { play };
