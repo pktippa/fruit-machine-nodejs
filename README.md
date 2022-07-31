@@ -8,7 +8,7 @@ Environment requirements
 Clone the project using
 
 ```sh
-$ git clonw https://github.com/pktippa/fruit-machine-nodejs.git
+$ git clone https://github.com/pktippa/fruit-machine-nodejs.git
 ```
 
 Install the dependencies (node modules)
